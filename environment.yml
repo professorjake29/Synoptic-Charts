@@ -1,0 +1,15 @@
+name: synoptic
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - cartopy
+  - matplotlib
+  - metpy
+  - siphon
+  - numpy
+  - scipy
+  - pandas
+  - requests
+  - netcdf4
+  - pip
