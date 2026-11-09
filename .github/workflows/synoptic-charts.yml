@@ -44,7 +44,7 @@ jobs:
 
       - name: Generate all 27 charts
         run: |
-          python Synoptic_I_Briefing_Charts_GFS_06Z_Forecasts_IEM_ECCC_HYBRID_v6.py
+          python Synoptic_I_Briefing_Charts_GFS_06Z_Forecasts_IEM_ECCC_HYBRID_v6_github.py
 
       - name: Validate chart set and replace repository working copies
         run: |
