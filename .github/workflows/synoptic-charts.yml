@@ -1,0 +1,75 @@
+name: Generate and Replace Synoptic Charts
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: synoptic-charts-publishing
+  cancel-in-progress: false
+
+jobs:
+  generate-and-publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    defaults:
+      run:
+        shell: bash -el {0}
+    env:
+      MPLBACKEND: Agg
+      SYNOPTIC_OUTPUT_DIR: ${{ github.workspace }}/output
+      PYTHONUNBUFFERED: '1'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Create scientific Python environment
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-file: environment.yml
+          environment-name: synoptic
+          cache-environment: true
+          cache-downloads: true
+
+      - name: Check scientific Python libraries
+        run: |
+          python --version
+          python -c 'import cartopy, metpy, siphon, netCDF4, matplotlib, PIL; print("Scientific packages loaded successfully")'
+
+      - name: Generate all 27 charts
+        run: |
+          python Synoptic_I_Briefing_Charts_GFS_06Z_Forecasts_IEM_ECCC_HYBRID_v6.py
+
+      - name: Validate chart set and replace repository working copies
+        run: |
+          python scripts/publish_charts.py --output output
+
+      - name: Commit and push all charts together
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          # Stage ONLY the 27 chart PNG files from the manifest.
+          while IFS= read -r chart; do
+            [ -n "$chart" ] && git add -- "$chart"
+          done < expected_chart_filenames.txt
+          if git diff --cached --quiet; then
+            echo 'Chart images are unchanged; no commit necessary.'
+          else
+            git commit -m 'Update synoptic charts (manual cloud run)'
+            git push origin HEAD:main
+          fi
+
+      - name: Upload chart ZIP as a backup (even after a partial failure)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synoptic-charts-${{ github.run_id }}
+          path: output/*.png
+          if-no-files-found: warn
+          retention-days: 30
